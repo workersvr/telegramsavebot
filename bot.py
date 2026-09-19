@@ -1,4 +1,4 @@
-import os import json from datetime import datetime, timezone
+import os import json import threading from datetime import datetime, timezone from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 DATA_FILE = "users.json"
 def load_users(): if not os.path.exists(DATA_FILE): return {}
@@ -25,9 +25,7 @@ users[user_id] = {
 save_users(users)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE): await save_user(update)
 if update.effective_message:
-    await update.effective_message.reply_text(
-        "შენახული ხარ ✅"
-    )
+    await update.effective_message.reply_text("შენახული ხარ ✅")
 async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE): users = load_users()
 if not users:
     await update.message.reply_text("ჯერ არავინ არის შენახული.")
@@ -51,9 +49,15 @@ for user in users.values():
 text = "შენახული მომხმარებლები:\n\n" + "\n".join(lines)
 
 await update.message.reply_text(text[:4000])
+class HealthHandler(BaseHTTPRequestHandler): def do_GET(self): self.send_response(200) self.end_headers() self.wfile.write(b"Bot is running")
+def log_message(self, format, *args):
+    pass
+def start_web_server(): port = int(os.environ.get("PORT", 10000)) server = HTTPServer(("0.0.0.0", port), HealthHandler) server.serve_forever()
 def main(): token = os.environ.get("BOT_TOKEN")
 if not token:
     raise RuntimeError("BOT_TOKEN არ არის მითითებული.")
+
+threading.Thread(target=start_web_server, daemon=True).start()
 
 app = Application.builder().token(token).build()
 
